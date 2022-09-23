@@ -1,0 +1,15 @@
+TO-DO:
+1. Add another stock (modify all the functions accordingly)
+
+NOTES:
+1. The environment state should include all stocks observations
+    1.1. The observation is the passed to the network to decide wich action to choose
+2. There should be another three agent actions to add an additional stock (buy A, sell A, hold A, buy B, sell B, hold B)
+
+EXPLANATIONS:
+1. The agent is going to take an action that is not going to affect him right away (in the same day), but instead it's gonna affect him (reflected in the reward) in the next trading day.
+2. This is how the reward works for current day: The agent is going to take a look at the market return and see if the position in the previous day was the best one
+3. How taking a step works
+    3.1. The agent has a current observation that is used to take an action (which can be random or using the "policy")
+    3.2. The action taken is used to take a step in the environment
+        3.2.1. While doing that step we get a new observation (of the next day) by taking a step in the data. Using that new observation and the action yielded by the previous observation, we take a step in the trading simulator.
