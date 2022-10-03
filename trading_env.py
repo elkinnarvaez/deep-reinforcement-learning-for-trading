@@ -76,10 +76,10 @@ class DataSource:
             idx = pd.IndexSlice
             with pd.HDFStore('data/assets.h5') as store:
                 ticker_df = (store['quandl/wiki/prices']
-                    .loc[idx[:, ticker],
-                        ['adj_close', 'adj_volume', 'adj_low', 'adj_high']]
-                    .dropna()
-                    .sort_index())
+                             .loc[idx[:, ticker],
+                                  ['adj_close', 'adj_volume', 'adj_low', 'adj_high']]
+                             .dropna()
+                             .sort_index())
             ticker_df.columns = ['close', 'volume', 'low', 'high']
             log.info('got data for {}...'.format(ticker))
 
@@ -94,8 +94,9 @@ class DataSource:
     def preprocess_data(self, ticker_df, ticker):
         """calculate returns and percentiles, then removes missing values"""
 
-        items = list(map(lambda date: (date, ticker), pd.date_range(start=self.start_date,end=self.end_date)))
-        data = ticker_df.filter(items = items, axis=0)
+        items = list(map(lambda date: (date, ticker), pd.date_range(
+            start=self.start_date, end=self.end_date)))
+        data = ticker_df.filter(items=items, axis=0)
 
         data['returns'] = data.close.pct_change()
         data['ret_2'] = data.close.pct_change(2)
@@ -116,14 +117,14 @@ class DataSource:
         data['adx'] = talib.ADX(data.high, data.low, data.close)
 
         data = (data.replace((np.inf, -np.inf), np.nan)
-                     .drop(['high', 'low', 'close', 'volume'], axis=1)
-                     .dropna())
+                .drop(['high', 'low', 'close', 'volume'], axis=1)
+                .dropna())
 
         r = data.returns.copy()
         if self.normalize:
             data = pd.DataFrame(scale(data),
-                                     columns=data.columns,
-                                     index=data.index)
+                                columns=data.columns,
+                                index=data.index)
         features = data.columns.drop('returns')
         data['returns'] = r  # don't scale returns
         data = data.loc[:, ['returns'] + list(features)]
@@ -131,7 +132,8 @@ class DataSource:
 
     def reset(self):
         """Provides starting index for time series and resets step"""
-        high = min(len(self.data.loc[(slice(None), ticker), :].index) for ticker in self.tickers) - self.trading_days
+        high = min(len(self.data.loc[(slice(None), ticker), :].index)
+                   for ticker in self.tickers) - self.trading_days
         self.offset = np.random.randint(low=0, high=high)
         self.step = 0
 
@@ -139,7 +141,8 @@ class DataSource:
         """Returns data for current trading day and done signal"""
         observations = {}
         for ticker in self.tickers:
-            observations[ticker] = self.data.loc[(slice(None), ticker), :].iloc[self.offset + self.step].values
+            observations[ticker] = self.data.loc[(
+                slice(None), ticker), :].iloc[self.offset + self.step].values
         self.step += 1
         done = self.step > self.trading_days
         return observations, done
@@ -158,11 +161,16 @@ class TradingSimulator:
         # change every step
         self.step = 0
         self.navs = {ticker: np.ones(self.steps) for ticker in self.tickers}
-        self.market_navs = {ticker: np.ones(self.steps) for ticker in self.tickers}
-        self.strategy_returns = {ticker: np.zeros(self.steps) for ticker in self.tickers}
-        self.market_returns = {ticker: np.zeros(self.steps) for ticker in self.tickers}
-        self.actions = {ticker: np.zeros(self.steps) for ticker in self.tickers}
-        self.positions = {ticker: np.zeros(self.steps) for ticker in self.tickers}
+        self.market_navs = {ticker: np.ones(
+            self.steps) for ticker in self.tickers}
+        self.strategy_returns = {ticker: np.zeros(
+            self.steps) for ticker in self.tickers}
+        self.market_returns = {ticker: np.zeros(
+            self.steps) for ticker in self.tickers}
+        self.actions = {ticker: np.zeros(self.steps)
+                        for ticker in self.tickers}
+        self.positions = {ticker: np.zeros(self.steps)
+                          for ticker in self.tickers}
         self.costs = {ticker: np.zeros(self.steps) for ticker in self.tickers}
         self.trades = {ticker: np.zeros(self.steps) for ticker in self.tickers}
 
@@ -201,33 +209,37 @@ class TradingSimulator:
             trade_costs = abs(n_trades) * self.trading_cost_bps
             time_cost = 0 if n_trades else self.time_cost_bps
             self.costs[ticker][self.step] = trade_costs + time_cost
-            reward = start_position * market_returns[ticker] - self.costs[ticker][max(0, self.step-1)]
+            reward = start_position * \
+                market_returns[ticker] - \
+                self.costs[ticker][max(0, self.step-1)]
             self.strategy_returns[ticker][self.step] = reward
 
             if self.step != 0:
-                self.navs[ticker][self.step] = start_nav * (1 + self.strategy_returns[ticker][self.step])
-                self.market_navs[ticker][self.step] = start_market_nav * (1 + self.market_returns[ticker][self.step])
+                self.navs[ticker][self.step] = start_nav * \
+                    (1 + self.strategy_returns[ticker][self.step])
+                self.market_navs[ticker][self.step] = start_market_nav * \
+                    (1 + self.market_returns[ticker][self.step])
             ticker_rewards[ticker] = reward
             ticker_navs[ticker] = self.navs[ticker][self.step]
             ticker_costs[ticker] = self.costs[ticker][self.step]
 
         info = {'rewards': ticker_rewards,
-                'navs'   : ticker_navs,
-                'costs' : ticker_costs}
+                'navs': ticker_navs,
+                'costs': ticker_costs}
 
         self.step += 1
         return ticker_rewards, info
 
     def result(self):
         """returns current state as pd.DataFrame """
-        return pd.DataFrame({'action'         : self.actions,
-                             'nav'            : self.navs,
-                             'market_nav'     : self.market_navs,
-                             'market_return'  : self.market_returns,
+        return pd.DataFrame({'action': self.actions,
+                             'nav': self.navs,
+                             'market_nav': self.market_navs,
+                             'market_return': self.market_returns,
                              'strategy_return': self.strategy_returns,
-                             'position'       : self.positions,
-                             'cost'           : self.costs,
-                             'trade'          : self.trades})
+                             'position': self.positions,
+                             'cost': self.costs,
+                             'trade': self.trades})
 
 
 class TradingEnvironment(gym.Env):
@@ -286,7 +298,7 @@ class TradingEnvironment(gym.Env):
         """Returns state observation, reward, done and info"""
         observations, done = self.data_source.take_step()
         rewards, info = self.simulator.take_step(actions=actions,
-                                                market_returns={ticker: observations[ticker][0] for ticker in self.tickers})
+                                                 market_returns={ticker: observations[ticker][0] for ticker in self.tickers})
         return observations, rewards, done, info
 
     def reset(self):
