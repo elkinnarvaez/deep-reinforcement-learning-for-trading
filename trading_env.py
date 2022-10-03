@@ -74,7 +74,7 @@ class DataSource:
         for ticker in self.tickers:
             log.info('loading data for {}...'.format(ticker))
             idx = pd.IndexSlice
-            with pd.HDFStore('../data/assets.h5') as store:
+            with pd.HDFStore('data/assets.h5') as store:
                 ticker_df = (store['quandl/wiki/prices']
                     .loc[idx[:, ticker],
                         ['adj_close', 'adj_volume', 'adj_low', 'adj_high']]
@@ -110,10 +110,10 @@ class DataSource:
         data['atr'] = talib.ATR(data.high, data.low, data.close)
         data['ultosc'] = talib.ULTOSC(data.high, data.low, data.close)
 
-        # up, mid, low = talib.BBANDS(data.close)
-        # data['bbp'] = (data.close - low) / (up - low)
-        # data['obv'] = talib.OBV(data.close, data.volume)
-        # data['adx'] = talib.ADX(data.high, data.low, data.close)
+        up, mid, low = talib.BBANDS(data.close)
+        data['bbp'] = (data.close - low) / (up - low)
+        data['obv'] = talib.OBV(data.close, data.volume)
+        data['adx'] = talib.ADX(data.high, data.low, data.close)
 
         data = (data.replace((np.inf, -np.inf), np.nan)
                      .drop(['high', 'low', 'close', 'volume'], axis=1)
