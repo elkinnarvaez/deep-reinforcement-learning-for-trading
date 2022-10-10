@@ -3,16 +3,17 @@ import os
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 import seaborn as sns
+import json
+from pathlib import Path
 
-episodes_length = 100
-tickers = ['AAPL', 'KO']
-max_episodes = max(
-    list(map(lambda dir: int(dir[8:]), os.listdir("../results"))))*episodes_length
+experiments = ["experiment1", "experiment2"]
 
-episodes = [i for i in range(1, max_episodes + 1)]
+episodes_length = None
+tickers = None
+max_episodes = None
 
 
-def graph_results(per_ticker_results):
+def graph_results(per_ticker_results, experiment):
     for ticker in tickers:
         results = per_ticker_results[ticker]
         # Evaluate results
@@ -40,29 +41,45 @@ def graph_results(per_ticker_results):
 
         sns.despine()
         fig.tight_layout()
-        fig.savefig('performance_{0}'.format(ticker), dpi=300)
+        if not Path(experiment).exists():
+            Path(experiment).mkdir(parents=True)
+        fig.savefig('{0}/performance_{1}'.format(experiment, ticker), dpi=300)
 
 
 def main():
-    training_result_paths = {ticker: [] for ticker in tickers}
-    for d in sorted(os.listdir("../results"), key=lambda dir: int(dir[8:])):
+    global tickers, episodes_length, max_episodes
+    for experiment in experiments:
+        f = open("../experiments/{0}.json".format(experiment))
+        experiment_metadata = json.load(f)
+        f.close()
+
+        tickers = experiment_metadata["tickers"]
+        episodes_length = experiment_metadata["metadata"]["episodes_length"]
+
+        training_result_paths = {ticker: [] for ticker in tickers}
+        for d in sorted(os.listdir("../results/{0}".format(experiment)), key=lambda dir: int(dir[8:])):
+            for ticker in tickers:
+                training_result_paths[ticker].append(
+                    "../results/{0}/{1}/results_{2}.csv".format(experiment, d, ticker))
+
+        max_episodes = max(
+            list(map(lambda dir: int(dir[8:]), os.listdir("../results/{0}".format(experiment)))))*episodes_length
+
+        episodes = [i for i in range(1, max_episodes + 1)]
+
+        per_ticker_results = {}
         for ticker in tickers:
-            training_result_paths[ticker].append(
-                "../results/{0}/results_{1}.csv".format(d, ticker))
+            dfs = []
+            for p in training_result_paths[ticker]:
+                dfs.append(pd.read_csv(p))
+            df = pd.concat(dfs)
+            df['Episode'] = episodes
+            df = df.set_index('Episode')
+            per_ticker_results[ticker] = df.copy()
+            per_ticker_results[ticker]['Strategy Wins (%)'] = (per_ticker_results[ticker].Difference > 0).rolling(
+                int(max_episodes*0.10)).sum()
 
-    per_ticker_results = {}
-    for ticker in tickers:
-        dfs = []
-        for p in training_result_paths[ticker]:
-            dfs.append(pd.read_csv(p))
-        df = pd.concat(dfs)
-        df['Episode'] = episodes
-        df = df.set_index('Episode')
-        per_ticker_results[ticker] = df.copy()
-        per_ticker_results[ticker]['Strategy Wins (%)'] = (per_ticker_results[ticker].Difference > 0).rolling(
-            int(max_episodes*0.10)).sum()
-
-    graph_results(per_ticker_results)
+        graph_results(per_ticker_results, experiment)
 
 
 if __name__ == '__main__':
