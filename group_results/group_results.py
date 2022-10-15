@@ -12,6 +12,8 @@ episodes_length = None
 tickers = None
 max_episodes = None
 
+rolling_pct = 0.01
+
 
 def graph_results(per_ticker_results, experiment):
     for ticker in tickers:
@@ -21,14 +23,14 @@ def graph_results(per_ticker_results, experiment):
 
         df1 = (results[['Agent', 'Market']]
                .sub(1)
-               .rolling(int(max_episodes*0.10))
+               .rolling(100)
                .mean())
         df1.plot(ax=axes[0],
                  title='Annual Returns (Moving Average) - {0}'.format(ticker),
                  lw=1)
 
         df2 = results['Strategy Wins (%)'].div(
-            int(max_episodes*0.10)).rolling(int(max_episodes*0.05)).mean()
+            100).rolling(50).mean()
         df2.plot(ax=axes[1],
                  title='Agent Outperformance (%, Moving Average) - {0}'.format(ticker))
 
@@ -76,8 +78,8 @@ def main():
             df['Episode'] = episodes
             df = df.set_index('Episode')
             per_ticker_results[ticker] = df.copy()
-            per_ticker_results[ticker]['Strategy Wins (%)'] = (per_ticker_results[ticker].Difference > 0).rolling(
-                int(max_episodes*0.10)).sum()
+            per_ticker_results[ticker]['Strategy Wins (%)'] = (
+                per_ticker_results[ticker].Difference > 0).rolling(100).sum()
 
         graph_results(per_ticker_results, experiment)
 
