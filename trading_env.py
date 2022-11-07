@@ -108,9 +108,7 @@ class DataSource:
         data['atr'] = talib.ATR(data.high, data.low, data.close)
         slowk, slowd = talib.STOCH(data.high, data.low, data.close)
         data['stoch'] = slowd - slowk
-        data['atr'] = talib.ATR(data.high, data.low, data.close)
         data['ultosc'] = talib.ULTOSC(data.high, data.low, data.close)
-
         up, mid, low = talib.BBANDS(data.close)
         data['bbp'] = (data.close - low) / (up - low)
         data['obv'] = talib.OBV(data.close, data.volume)
