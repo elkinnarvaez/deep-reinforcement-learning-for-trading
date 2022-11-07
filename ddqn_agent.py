@@ -61,7 +61,6 @@ class DDQNAgent:
         self.epsilon_decay = (
             epsilon_start - epsilon_end) / epsilon_decay_steps
         self.epsilon_exponential_decay = epsilon_exponential_decay
-        self.epsilon_history = []
 
         self.total_steps = 0
         self.episodes = 0
