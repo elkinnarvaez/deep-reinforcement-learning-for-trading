@@ -1,0 +1,17 @@
+{
+    "tickers": ["AAPL", "JNJ"],
+    "metadata": {
+        "start_date": "1990-01-01",
+        "end_date": "2018-02-20",
+        "trading_cost_bps": 1e-3,
+        "time_cost_bps": 1e-4,
+        "gamma": 0.99,
+        "tau": 100,
+        "architecture": [256, 256],
+        "learning_rate": 0.0001,
+        "l2_reg": 1e-6,
+        "replay_capacity": 1e6,
+        "batch_size": 4096,
+        "episodes_length": 50
+    }
+}
